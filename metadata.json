@@ -1,0 +1,6 @@
+{
+  "name": "FocusDNA",
+  "description": "Adaptive productivity system that learns how you work and customizes future focus sessions based on your behavioral DNA.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
