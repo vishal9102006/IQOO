@@ -14,6 +14,7 @@ import {
   CheckCircle,
   Coffee,
   Info,
+  Presentation,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -91,13 +92,23 @@ export const FocusDnaView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowMathExplainer(!showMathExplainer)}
-          className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-semibold text-zinc-300 flex items-center gap-1.5 transition-colors self-start md:self-auto"
-        >
-          <HelpCircle className="w-3.5 h-3.5 text-indigo-400" />
-          <span>How is FocusDNA calculated?</span>
-        </button>
+        <div className="flex items-center gap-2 self-start md:self-auto">
+          <button
+            onClick={() => setActiveView('presentation')}
+            className="px-3.5 py-2 rounded-xl bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-500/40 text-xs font-semibold text-indigo-300 flex items-center gap-1.5 transition-colors shadow-sm"
+            title="Open Presentation Deck & Export PDF"
+          >
+            <Presentation className="w-3.5 h-3.5 text-indigo-400" />
+            <span>PPT Deck & PDF</span>
+          </button>
+          <button
+            onClick={() => setShowMathExplainer(!showMathExplainer)}
+            className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-semibold text-zinc-300 flex items-center gap-1.5 transition-colors"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-indigo-400" />
+            <span>How is FocusDNA calculated?</span>
+          </button>
+        </div>
       </div>
 
       {/* Transparent Algorithm Explainer Accordion */}

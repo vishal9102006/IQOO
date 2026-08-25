@@ -11,6 +11,7 @@ import { TasksView } from './components/TasksView';
 import { FocusModeView } from './components/FocusModeView';
 import { FocusDnaView } from './components/FocusDnaView';
 import { AiCoachView } from './components/AiCoachView';
+import { PresentationView } from './components/PresentationView';
 import { SettingsView } from './components/SettingsView';
 import { SessionReviewModal } from './components/SessionReviewModal';
 import { RespirationModal } from './components/RespirationModal';
@@ -18,6 +19,14 @@ import { ToastContainer } from './components/ToastContainer';
 
 const MainContent: React.FC = () => {
   const { activeView } = useApp();
+
+  if (activeView === 'presentation') {
+    return (
+      <div className="flex-1 min-w-0 h-screen overflow-y-auto">
+        <PresentationView />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 min-w-0 pb-20 md:pb-8 overflow-y-auto">

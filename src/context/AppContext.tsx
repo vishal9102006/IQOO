@@ -25,7 +25,7 @@ const STORAGE_KEYS = {
   WEEKLY_DIGEST: 'focusdna_weekly_digest_v1',
 };
 
-export type ActiveView = 'dashboard' | 'tasks' | 'focus' | 'focus-dna' | 'coach' | 'settings';
+export type ActiveView = 'dashboard' | 'tasks' | 'focus' | 'focus-dna' | 'coach' | 'presentation' | 'settings';
 
 interface ActiveFocusSessionState {
   sessionId: string;

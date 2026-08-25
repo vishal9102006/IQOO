@@ -12,6 +12,7 @@ import {
   VolumeX,
   Sparkles,
   Zap,
+  Presentation,
 } from 'lucide-react';
 
 export const Navigation: React.FC = () => {
@@ -37,6 +38,7 @@ export const Navigation: React.FC = () => {
     },
     { id: 'focus-dna', label: 'FocusDNA', icon: Dna, badge: focusDna.hasSufficientData ? `${focusDna.focusScore}%` : undefined },
     { id: 'coach', label: 'Ask AI Coach', icon: Bot },
+    { id: 'presentation', label: 'PPT / Projector', icon: Presentation, badge: '10 Slides' },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 

@@ -16,6 +16,7 @@ import {
   Calendar,
   Award,
   Wind,
+  Presentation,
 } from 'lucide-react';
 import { Task } from '../types';
 import { CircadianScheduleModal } from './CircadianScheduleModal';
@@ -137,6 +138,16 @@ export const DashboardView: React.FC = () => {
           >
             <Wind className="w-3.5 h-3.5 text-indigo-400" />
             <span>2-Min Reset</span>
+          </button>
+
+          {/* PPT / Projector Presentation Trigger */}
+          <button
+            onClick={() => setActiveView('presentation')}
+            className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-200 text-xs font-semibold transition-all flex items-center gap-1.5"
+            title="Open Clean Projector Presentation"
+          >
+            <Presentation className="w-3.5 h-3.5 text-indigo-400" />
+            <span>PPT Deck</span>
           </button>
 
           <button
