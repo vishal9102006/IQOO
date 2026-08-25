@@ -20,8 +20,12 @@ import {
   HelpCircle,
   Moon,
   Clock,
+  Wind,
+  CheckSquare,
+  Square,
+  Sliders,
 } from 'lucide-react';
-import { DistractionCategory } from '../types';
+import { DistractionCategory, AmbientSoundType } from '../types';
 
 export const FocusModeView: React.FC = () => {
   const {
@@ -34,12 +38,17 @@ export const FocusModeView: React.FC = () => {
     abandonSession,
     ambientSound,
     setAmbientSound,
+    ambientVolume,
+    setAmbientVolume,
     isMuted,
     setIsMuted,
     focusDna,
+    setIsRespirationModalOpen,
+    toggleMicroStep,
   } = useApp();
 
   const [isDistractionModalOpen, setIsDistractionModalOpen] = useState(false);
+  const [isSoundDrawerOpen, setIsSoundDrawerOpen] = useState(false);
   const [customNote, setCustomNote] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -194,7 +203,7 @@ export const FocusModeView: React.FC = () => {
   const strokeDashoffset = circumference - (progressPercent / 100) * circumference;
 
   return (
-    <div className="relative min-h-[calc(100vh-4rem)] flex flex-col justify-between p-4 md:p-8 max-w-4xl mx-auto">
+    <div className="relative min-h-[calc(100vh-4rem)] flex flex-col justify-between p-4 md:p-8 max-w-4xl mx-auto space-y-6">
       {/* Top Session Bar */}
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-2">
@@ -214,20 +223,87 @@ export const FocusModeView: React.FC = () => {
           </span>
         </div>
 
-        {/* Top Sound & Fullscreen controls */}
+        {/* Top Sound, Respiration & Fullscreen controls */}
         <div className="flex items-center gap-1.5 bg-zinc-900/80 border border-zinc-800 rounded-xl p-1">
+          {/* Emergency 2-Min Reset Breathe Button */}
           <button
-            onClick={() => setAmbientSound(ambientSound === 'off' ? 'binaural' : ambientSound === 'binaural' ? 'pink-noise' : 'off')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
-              ambientSound !== 'off'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-            title="Toggle Ambient Audio (Binaural / Pink noise / Off)"
+            onClick={() => setIsRespirationModalOpen(true)}
+            className="px-2.5 py-1 rounded-lg text-xs font-medium bg-zinc-800 hover:bg-indigo-950 text-indigo-300 border border-indigo-500/30 flex items-center gap-1.5 transition-all"
+            title="Launch 2-Min Cognitive Reset Breathwork"
           >
-            <Radio className="w-3.5 h-3.5" />
-            <span className="capitalize">{ambientSound === 'off' ? 'Sound: Off' : ambientSound}</span>
+            <Wind className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="hidden sm:inline">2-Min Reset</span>
           </button>
+
+          {/* Sound Selector Dock */}
+          <div className="relative">
+            <button
+              onClick={() => setIsSoundDrawerOpen(!isSoundDrawerOpen)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
+                ambientSound !== 'off'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+              title="Open Soundscapes Dock"
+            >
+              <Radio className="w-3.5 h-3.5" />
+              <span className="capitalize hidden sm:inline">
+                {ambientSound === 'off' ? 'Sound: Off' : ambientSound.replace('-', ' ')}
+              </span>
+            </button>
+
+            {isSoundDrawerOpen && (
+              <div className="absolute right-0 mt-2 w-56 p-3 rounded-2xl bg-zinc-900 border border-zinc-700/80 shadow-2xl z-40 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-zinc-800 text-xs font-bold text-zinc-200 uppercase tracking-wider">
+                  <span>Soundscapes</span>
+                  <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+                </div>
+
+                <div className="space-y-1">
+                  {[
+                    { id: 'off', label: 'Off' },
+                    { id: 'binaural', label: '40Hz Gamma Focus' },
+                    { id: 'brown-noise', label: 'Deep Brown Waterfall' },
+                    { id: 'pink-noise', label: 'Pink Noise Rain' },
+                    { id: 'alpha-flow', label: '10Hz Alpha Waves' },
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => {
+                        setAmbientSound(s.id as AmbientSoundType);
+                        setIsSoundDrawerOpen(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-between ${
+                        ambientSound === s.id
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
+                      }`}
+                    >
+                      <span>{s.label}</span>
+                      {ambientSound === s.id && <span className="text-[10px]">✓</span>}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Volume Slider */}
+                <div className="pt-2 border-t border-zinc-800 space-y-1">
+                  <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                    <span>Volume</span>
+                    <span>{Math.round(ambientVolume * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={ambientVolume}
+                    onChange={(e) => setAmbientVolume(parseFloat(e.target.value))}
+                    className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
 
           <button
             onClick={() => setIsMuted(!isMuted)}
@@ -248,7 +324,7 @@ export const FocusModeView: React.FC = () => {
       </div>
 
       {/* Main Focus Centerpiece */}
-      <div className="flex flex-col items-center justify-center my-auto py-6 space-y-6">
+      <div className="flex flex-col items-center justify-center my-auto py-4 space-y-6">
         {/* Task Title & Goal */}
         <div className="text-center space-y-1.5 max-w-md px-4">
           <h2 className="text-xl md:text-2xl font-bold tracking-tight text-zinc-100">
@@ -302,6 +378,35 @@ export const FocusModeView: React.FC = () => {
             </span>
           </div>
         </div>
+
+        {/* Interactive Micro-Step Checkpoints if available */}
+        {activeSession.microSteps && activeSession.microSteps.length > 0 && (
+          <div className="w-full max-w-md p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-2 text-left">
+            <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider block">
+              Sprint Checkpoints
+            </span>
+            <div className="space-y-1.5">
+              {activeSession.microSteps.map((step) => (
+                <button
+                  key={step.id}
+                  onClick={() => toggleMicroStep(step.id)}
+                  className={`w-full p-2.5 rounded-xl text-xs flex items-center gap-2.5 transition-all text-left ${
+                    step.completed
+                      ? 'bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 line-through'
+                      : 'bg-zinc-950 border border-zinc-800 text-zinc-300 hover:border-zinc-700'
+                  }`}
+                >
+                  {step.completed ? (
+                    <CheckSquare className="w-4 h-4 text-emerald-400 shrink-0" />
+                  ) : (
+                    <Square className="w-4 h-4 text-zinc-500 shrink-0" />
+                  )}
+                  <span className="truncate">{step.text}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Primary Controls */}
         <div className="flex items-center gap-3">

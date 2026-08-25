@@ -13,8 +13,13 @@ import {
   ArrowRight,
   Zap,
   Target,
+  Calendar,
+  Award,
+  Wind,
 } from 'lucide-react';
 import { Task } from '../types';
+import { CircadianScheduleModal } from './CircadianScheduleModal';
+import { WeeklyDigestModal } from './WeeklyDigestModal';
 
 export const DashboardView: React.FC = () => {
   const {
@@ -29,11 +34,15 @@ export const DashboardView: React.FC = () => {
     isGeneratingPlanForTaskId,
     isDemoMode,
     loadDemoData,
+    setIsRespirationModalOpen,
   } = useApp();
 
   const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
   const [quickTitle, setQuickTitle] = useState('');
   const [quickMinutes, setQuickMinutes] = useState(focusDna.bestFocusDuration || 23);
+
+  const [isCircadianModalOpen, setIsCircadianModalOpen] = useState(false);
+  const [isWeeklyDigestOpen, setIsWeeklyDigestOpen] = useState(false);
 
   // Dynamic greeting
   const getGreeting = () => {
@@ -73,6 +82,16 @@ export const DashboardView: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-8">
+      {/* Modals for Day Optimizer & Weekly Digest */}
+      <CircadianScheduleModal
+        isOpen={isCircadianModalOpen}
+        onClose={() => setIsCircadianModalOpen(false)}
+      />
+      <WeeklyDigestModal
+        isOpen={isWeeklyDigestOpen}
+        onClose={() => setIsWeeklyDigestOpen(false)}
+      />
+
       {/* Top Greeting & Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="space-y-1">
@@ -91,13 +110,33 @@ export const DashboardView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Circadian Day Optimizer Trigger */}
           <button
-            onClick={() => setActiveView('tasks')}
-            className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-semibold text-zinc-200 transition-colors flex items-center gap-2"
+            onClick={() => setIsCircadianModalOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-500/40 text-indigo-300 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm"
           >
-            <Plus className="w-3.5 h-3.5 text-zinc-400" />
-            <span>New Task</span>
+            <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Optimize Day</span>
+          </button>
+
+          {/* Weekly Executive Digest Trigger */}
+          <button
+            onClick={() => setIsWeeklyDigestOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-300 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm"
+          >
+            <Award className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Weekly Digest</span>
+          </button>
+
+          {/* 2-Min Reset Trigger */}
+          <button
+            onClick={() => setIsRespirationModalOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-200 text-xs font-semibold transition-all flex items-center gap-1.5"
+            title="Launch 2-Min Respiration Reset"
+          >
+            <Wind className="w-3.5 h-3.5 text-indigo-400" />
+            <span>2-Min Reset</span>
           </button>
 
           <button
@@ -108,10 +147,10 @@ export const DashboardView: React.FC = () => {
                 goal: `High performance sprint (${focusDna.bestFocusDuration || 23}m)`,
               })
             }
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-emerald-400 hover:opacity-95 text-zinc-950 font-bold text-xs shadow-lg shadow-indigo-500/20 transition-all flex items-center gap-2"
+            className="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-emerald-400 hover:opacity-95 text-zinc-950 font-bold text-xs shadow-lg shadow-indigo-500/20 transition-all flex items-center gap-2"
           >
             <Play className="w-3.5 h-3.5 fill-zinc-950" />
-            <span>Start Focus ({focusDna.bestFocusDuration}m)</span>
+            <span>Start Sprint ({focusDna.bestFocusDuration}m)</span>
           </button>
         </div>
       </div>

@@ -20,12 +20,21 @@ export interface DistractionRecord {
   minuteIntoSession: number;
 }
 
+export type AmbientSoundType = 'off' | 'binaural' | 'pink-noise' | 'brown-noise' | 'alpha-flow';
+
+export interface MicroStep {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+
 export interface PlannedSession {
   id: string;
   duration: number; // in minutes
   type: 'focus' | 'break';
   goal: string;
   completed?: boolean;
+  microSteps?: MicroStep[];
 }
 
 export interface FocusPlan {
@@ -67,6 +76,7 @@ export interface FocusSessionRecord {
   endedAt: string;
   sessionType: 'focus' | 'break';
   goal?: string;
+  completedMicroSteps?: string[];
 }
 
 export interface DurationBucket {
@@ -143,4 +153,37 @@ export interface CoachMessage {
     commonDistraction?: string;
     peakTime?: string;
   };
+}
+
+export interface ScheduledTimeSlot {
+  id: string;
+  timeLabel: string; // e.g. "09:00 AM - 09:25 AM"
+  period: 'Morning' | 'Afternoon' | 'Evening' | 'Night';
+  type: 'focus' | 'break' | 'buffer';
+  taskId?: string;
+  taskTitle: string;
+  durationMinutes: number;
+  difficulty?: Difficulty;
+  isPeakWindow: boolean;
+  cognitiveNote: string;
+}
+
+export interface OptimizedDayPlan {
+  date: string;
+  totalFocusMinutes: number;
+  totalBreakMinutes: number;
+  circadianSummary: string;
+  schedule: ScheduledTimeSlot[];
+  aiAdvice: string;
+}
+
+export interface WeeklyDigestReport {
+  generatedAt: string;
+  focusScore: number;
+  totalMinutes: number;
+  bestDay: string;
+  fatigueInsight: string;
+  distractionDiagnosis: string;
+  prescriptions: string[];
+  cognitiveTier: string;
 }

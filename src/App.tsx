@@ -13,6 +13,7 @@ import { FocusDnaView } from './components/FocusDnaView';
 import { AiCoachView } from './components/AiCoachView';
 import { SettingsView } from './components/SettingsView';
 import { SessionReviewModal } from './components/SessionReviewModal';
+import { RespirationModal } from './components/RespirationModal';
 import { ToastContainer } from './components/ToastContainer';
 
 const MainContent: React.FC = () => {
@@ -37,6 +38,7 @@ export default function App() {
         <Navigation />
         <MainContent />
         <SessionReviewModal />
+        <RespirationModal />
         <ToastContainer />
       </div>
     </AppProvider>

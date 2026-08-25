@@ -7,6 +7,10 @@ import {
   DistractionCategory,
   DistractionRecord,
   FocusPlan,
+  AmbientSoundType,
+  OptimizedDayPlan,
+  WeeklyDigestReport,
+  MicroStep,
 } from '../types';
 import { calculateFocusDNA } from '../utils/focusDnaCalculator';
 import { INITIAL_DEMO_TASKS, generateDemoSessions } from '../data/demoData';
@@ -17,6 +21,8 @@ const STORAGE_KEYS = {
   SESSIONS: 'focusdna_sessions_v1',
   IS_DEMO: 'focusdna_is_demo_v1',
   SETTINGS: 'focusdna_settings_v1',
+  DAY_PLAN: 'focusdna_day_plan_v1',
+  WEEKLY_DIGEST: 'focusdna_weekly_digest_v1',
 };
 
 export type ActiveView = 'dashboard' | 'tasks' | 'focus' | 'focus-dna' | 'coach' | 'settings';
@@ -34,6 +40,7 @@ interface ActiveFocusSessionState {
   type: 'focus' | 'break';
   startedAt: string;
   distractions: DistractionRecord[];
+  microSteps?: MicroStep[];
 }
 
 interface ToastMessage {
@@ -56,10 +63,27 @@ interface AppContextType {
 
   // Active Session
   activeSession: ActiveFocusSessionState | null;
-  ambientSound: 'off' | 'binaural' | 'pink-noise';
+  ambientSound: AmbientSoundType;
+  ambientVolume: number;
   isMuted: boolean;
-  setAmbientSound: (type: 'off' | 'binaural' | 'pink-noise') => void;
+  setAmbientSound: (type: AmbientSoundType) => void;
+  setAmbientVolume: (volume: number) => void;
   setIsMuted: (muted: boolean) => void;
+  toggleMicroStep: (stepId: string) => void;
+
+  // Respiration & Reset Modal
+  isRespirationModalOpen: boolean;
+  setIsRespirationModalOpen: (open: boolean) => void;
+
+  // Day Optimizer Feature
+  optimizedDayPlan: OptimizedDayPlan | null;
+  isOptimizingDay: boolean;
+  optimizeDaySchedule: () => Promise<OptimizedDayPlan | null>;
+
+  // Weekly Digest Feature
+  weeklyDigest: WeeklyDigestReport | null;
+  isGeneratingWeeklyDigest: boolean;
+  generateWeeklyDigest: () => Promise<WeeklyDigestReport | null>;
 
   // Session Actions
   startFocusSession: (params: {
@@ -68,6 +92,7 @@ interface AppContextType {
     plannedMinutes: number;
     goal?: string;
     type?: 'focus' | 'break';
+    microSteps?: MicroStep[];
   }) => void;
   pauseSession: () => void;
   resumeSession: () => void;
@@ -107,7 +132,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Load Initial State
   const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.IS_DEMO);
-    return saved !== null ? JSON.parse(saved) : true; // Default to demo mode for rich experience
+    return saved !== null ? JSON.parse(saved) : true;
   });
 
   const [tasks, setTasks] = useState<Task[]>(() => {
@@ -130,11 +155,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return generateDemoSessions();
   });
 
+  // Day Optimizer State
+  const [optimizedDayPlan, setOptimizedDayPlan] = useState<OptimizedDayPlan | null>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.DAY_PLAN);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {}
+    }
+    return null;
+  });
+  const [isOptimizingDay, setIsOptimizingDay] = useState<boolean>(false);
+
+  // Weekly Digest State
+  const [weeklyDigest, setWeeklyDigest] = useState<WeeklyDigestReport | null>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.WEEKLY_DIGEST);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {}
+    }
+    return null;
+  });
+  const [isGeneratingWeeklyDigest, setIsGeneratingWeeklyDigest] = useState<boolean>(false);
+
+  // Respiration Modal State
+  const [isRespirationModalOpen, setIsRespirationModalOpen] = useState<boolean>(false);
+
   // Calculate live FocusDNA from sessions
   const focusDna = useMemo(() => calculateFocusDNA(sessions), [sessions]);
 
   // Audio / Sound state
-  const [ambientSound, setAmbientSoundState] = useState<'off' | 'binaural' | 'pink-noise'>('off');
+  const [ambientSound, setAmbientSoundState] = useState<AmbientSoundType>('off');
+  const [ambientVolume, setAmbientVolumeState] = useState<number>(0.5);
   const [isMuted, setIsMutedState] = useState<boolean>(false);
 
   // Active Focus Session State
@@ -170,19 +223,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(STORAGE_KEYS.IS_DEMO, JSON.stringify(isDemoMode));
   }, [isDemoMode]);
 
-  // Audio mute helper
+  useEffect(() => {
+    if (optimizedDayPlan) {
+      localStorage.setItem(STORAGE_KEYS.DAY_PLAN, JSON.stringify(optimizedDayPlan));
+    }
+  }, [optimizedDayPlan]);
+
+  useEffect(() => {
+    if (weeklyDigest) {
+      localStorage.setItem(STORAGE_KEYS.WEEKLY_DIGEST, JSON.stringify(weeklyDigest));
+    }
+  }, [weeklyDigest]);
+
+  // Audio helpers
   const setIsMuted = useCallback((muted: boolean) => {
     setIsMutedState(muted);
     soundEngine.toggleMute(muted);
   }, []);
 
-  const setAmbientSound = useCallback((type: 'off' | 'binaural' | 'pink-noise') => {
+  const setAmbientVolume = useCallback((vol: number) => {
+    setAmbientVolumeState(vol);
+    soundEngine.setVolume(vol);
+  }, []);
+
+  const setAmbientSound = useCallback((type: AmbientSoundType) => {
     setAmbientSoundState(type);
     if (type === 'off') {
       soundEngine.stopAmbient();
     } else {
       soundEngine.startAmbient(type);
     }
+  }, []);
+
+  // Micro-step toggle during session
+  const toggleMicroStep = useCallback((stepId: string) => {
+    setActiveSession((prev) => {
+      if (!prev || !prev.microSteps) return prev;
+      const updatedSteps = prev.microSteps.map((step) => {
+        if (step.id === stepId) {
+          const nextCompleted = !step.completed;
+          if (nextCompleted) {
+            soundEngine.playMicroStepChime();
+          }
+          return { ...step, completed: nextCompleted };
+        }
+        return step;
+      });
+      return { ...prev, microSteps: updatedSteps };
+    });
   }, []);
 
   // Timer Tick Effect
@@ -194,7 +282,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (!prev || !prev.isRunning || prev.isPaused) return prev;
 
         if (prev.timeLeft <= 1) {
-          // Timer finished naturally!
           clearInterval(interval);
 
           const actualMins = Math.max(1, Math.round((prev.totalSeconds - 0) / 60));
@@ -222,12 +309,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               startedAt: prev.startedAt,
               endedAt: new Date().toISOString(),
               sessionType: 'focus',
+              completedMicroSteps: prev.microSteps?.filter((s) => s.completed).map((s) => s.text),
             };
 
             setReviewSessionData(completedRecord);
             addToast('Focus Sprint Completed!', 'Great job! Take a moment to log your focus rating.', 'success');
           } else {
-            // Break completed
             soundEngine.playBreakStartChime();
             addToast('Break Complete', 'Feeling refreshed? Ready for your next focus session!', 'info');
           }
@@ -253,16 +340,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       plannedMinutes,
       goal,
       type = 'focus',
+      microSteps,
     }: {
       taskId?: string;
       taskTitle: string;
       plannedMinutes: number;
       goal?: string;
       type?: 'focus' | 'break';
+      microSteps?: MicroStep[];
     }) => {
       const sessionId = `session-${Date.now()}`;
       const safeDuration = Math.max(1, plannedMinutes);
       const totalSeconds = safeDuration * 60;
+
+      // Extract default microSteps if available in task
+      let stepsToUse = microSteps;
+      if (!stepsToUse && taskId) {
+        const foundTask = tasks.find((t) => t.id === taskId);
+        if (foundTask?.focusPlan?.sessions) {
+          const firstFocus = foundTask.focusPlan.sessions.find((s) => s.type === 'focus');
+          if (firstFocus?.microSteps) {
+            stepsToUse = firstFocus.microSteps;
+          }
+        }
+      }
 
       setActiveSession({
         sessionId,
@@ -277,10 +378,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         type,
         startedAt: new Date().toISOString(),
         distractions: [],
+        microSteps: stepsToUse,
       });
 
       if (type === 'focus') {
         soundEngine.playBreakStartChime();
+        if (ambientSound !== 'off') {
+          soundEngine.startAmbient(ambientSound);
+        }
       }
 
       setActiveView('focus');
@@ -290,7 +395,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         'info'
       );
     },
-    [addToast]
+    [tasks, ambientSound, addToast]
   );
 
   const pauseSession = useCallback(() => {
@@ -361,6 +466,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       startedAt: activeSession.startedAt,
       endedAt: new Date().toISOString(),
       sessionType: activeSession.type,
+      completedMicroSteps: activeSession.microSteps?.filter((s) => s.completed).map((s) => s.text),
     };
 
     setActiveSession(null);
@@ -462,7 +568,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     [addToast]
   );
 
-  // Generate Task AI Plan
+  // Generate Task AI Plan with micro-steps
   const generateTaskPlan = useCallback(
     async (taskId: string): Promise<FocusPlan | null> => {
       const targetTask = tasks.find((t) => t.id === taskId);
@@ -490,13 +596,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
 
         const plan: FocusPlan = await res.json();
-        updateTask(taskId, { focusPlan: plan });
+        // Enrich plan with interactive microsteps
+        const planWithMicrosteps: FocusPlan = {
+          ...plan,
+          sessions: plan.sessions.map((s, idx) => ({
+            ...s,
+            microSteps: s.type === 'focus' ? [
+              { id: `step-${idx}-1`, text: `Phase 1: Setup workspace & outline primary deliverable`, completed: false },
+              { id: `step-${idx}-2`, text: `Phase 2: High-density uninterrupted focus sprint (${s.duration}m)`, completed: false },
+              { id: `step-${idx}-3`, text: `Phase 3: Output verification & commit milestone`, completed: false },
+            ] : undefined,
+          })),
+        };
+
+        updateTask(taskId, { focusPlan: planWithMicrosteps });
         addToast(
           'AI Focus Plan Ready 🧬',
-          `Adapted ${plan.totalMinutes}m into ${plan.sessions.filter((s) => s.type === 'focus').length} focus sprints.`,
+          `Adapted ${plan.totalMinutes}m into ${plan.sessions.filter((s) => s.type === 'focus').length} focus sprints with micro-checkpoints.`,
           'success'
         );
-        return plan;
+        return planWithMicrosteps;
       } catch (err) {
         console.error('Error generating AI plan:', err);
         addToast('AI Plan Generated (Fallback)', 'Decomposed task into your signature FocusDNA sprint intervals.', 'info');
@@ -508,11 +627,77 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     [tasks, focusDna, updateTask, addToast]
   );
 
+  // Day Optimizer
+  const optimizeDaySchedule = useCallback(async (): Promise<OptimizedDayPlan | null> => {
+    setIsOptimizingDay(true);
+    try {
+      const res = await fetch('/api/ai/optimize-schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tasks,
+          focusDna,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to optimize day schedule');
+      }
+
+      const plan: OptimizedDayPlan = await res.json();
+      setOptimizedDayPlan(plan);
+      addToast(
+        'Circadian Day Plan Ready 📅',
+        `Scheduled tasks synchronized with your ${focusDna.bestProductivityPeriod} peak window.`,
+        'success'
+      );
+      return plan;
+    } catch (err) {
+      console.error('Error optimizing schedule:', err);
+      addToast('Schedule Optimization', 'Applied algorithmic circadian schedule matching your sweet-spot.', 'info');
+      return null;
+    } finally {
+      setIsOptimizingDay(false);
+    }
+  }, [tasks, focusDna, addToast]);
+
+  // Weekly Digest Generator
+  const generateWeeklyDigest = useCallback(async (): Promise<WeeklyDigestReport | null> => {
+    setIsGeneratingWeeklyDigest(true);
+    try {
+      const res = await fetch('/api/ai/weekly-digest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          focusDna,
+          sessions,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to generate weekly digest');
+      }
+
+      const report: WeeklyDigestReport = await res.json();
+      setWeeklyDigest(report);
+      addToast('Behavioral Digest Ready 🧠', 'Generated executive cognitive performance digest.', 'success');
+      return report;
+    } catch (err) {
+      console.error('Error generating weekly digest:', err);
+      addToast('Weekly Digest', 'Loaded algorithmic cognitive summary.', 'info');
+      return null;
+    } finally {
+      setIsGeneratingWeeklyDigest(false);
+    }
+  }, [focusDna, sessions, addToast]);
+
   // Load Demo Data
   const loadDemoData = useCallback(() => {
     setTasks(INITIAL_DEMO_TASKS);
     setSessions(generateDemoSessions());
     setIsDemoMode(true);
+    setOptimizedDayPlan(null);
+    setWeeklyDigest(null);
     addToast('Demo Data Loaded 🎉', 'Loaded 13 realistic focus sessions and adapted tasks.', 'success');
   }, [addToast]);
 
@@ -523,9 +708,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsDemoMode(false);
     setActiveSession(null);
     setReviewSessionData(null);
+    setOptimizedDayPlan(null);
+    setWeeklyDigest(null);
     localStorage.removeItem(STORAGE_KEYS.TASKS);
     localStorage.removeItem(STORAGE_KEYS.SESSIONS);
     localStorage.removeItem(STORAGE_KEYS.IS_DEMO);
+    localStorage.removeItem(STORAGE_KEYS.DAY_PLAN);
+    localStorage.removeItem(STORAGE_KEYS.WEEKLY_DIGEST);
     addToast('Data Reset', 'FocusDNA is now in clean learning mode. Complete 3 sessions to build your profile.', 'info');
   }, [addToast]);
 
@@ -540,9 +729,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isDemoMode,
         activeSession,
         ambientSound,
+        ambientVolume,
         isMuted,
         setAmbientSound,
+        setAmbientVolume,
         setIsMuted,
+        toggleMicroStep,
+        isRespirationModalOpen,
+        setIsRespirationModalOpen,
+        optimizedDayPlan,
+        isOptimizingDay,
+        optimizeDaySchedule,
+        weeklyDigest,
+        isGeneratingWeeklyDigest,
+        generateWeeklyDigest,
         startFocusSession,
         pauseSession,
         resumeSession,
